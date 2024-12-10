@@ -1,15 +1,16 @@
 import sqlite3
 
 try:
-    from .Logger import Logger 
+    from .Logger import Logger
 except ImportError:
     from Logger import Logger
 class SQLite:
-    def __init__(self, path: str, log_name="sqlite", ):
+    def __init__(self, path: str, log_name='sqlite'):
         """Class for SQLite interaction
         :param path: Path to the desired SQLite file
         :type path: str
         """
+        self.logger = Logger(log_name)
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
@@ -27,7 +28,7 @@ class SQLite:
         try:
             self.cursor.execute(cmd, params or ())
         except sqlite3.Error as e:
-            print(f"SQLite Error: {e}")  # Replace with proper logging
+            self.logger.log(f"SQLite Error: {e}")
 
     def Insert(self, table: str, values: dict):
         """Insert a row into a table."""
@@ -52,7 +53,7 @@ class SQLite:
         try:
             self.connection.commit()
         except sqlite3.Error as e:
-            print(f"Commit Error: {e}")  # Replace with proper logging
+            self.logger.log(f"Commit Error: {e}")
 
     def Close(self):
         """Closes the database connection."""
@@ -60,4 +61,4 @@ class SQLite:
             self.connection.close()
 
         except sqlite3.Error as e:
-            print(f"Close Error: {e}")  # Replace with proper logging
+            self.logger.log(f"Close Error: {e}")

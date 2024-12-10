@@ -2,12 +2,12 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 class Logger:
-    __default__ = {
-        'level': 2,
-        'file': None, 
-        'file_level': 2,
-        'file_size': 10**6,
-        'file_backups': 3,
+    cfg = {
+        'level' : 2,
+        'file' : None,
+        'file_level' : 2,
+        'file_size' : 10**6,
+        'file_backups' : 3, 
     }
 
     def __init__(self, name, **kwargs):
@@ -19,20 +19,26 @@ class Logger:
         :type level: int (1 - 5) / str
         :param file: Optional path to the log file.
         :type file: str / None
+        :param file_level: Level of logger (for file)
+        :type file: int (1 - 5) / str
+        :param file_size: Size of log file (in bytes)
+        :type file: int
+        :param file_backups: Amount of backups files
+        :type file: int
         """
-        cfg = {**Logger.__default__, **kwargs}
+        self.cfg |= {**kwargs,}
 
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(self.__get_level__(1))
+        self.logger.setLevel(self.__get_level__(1)) # 1 for filter
         
         cmd_handler = logging.StreamHandler()
-        cmd_handler.setLevel(self.__get_level__(cfg['level']))
+        cmd_handler.setLevel(self.__get_level__(self.cfg['level']))
         cmd_handler.setFormatter(logging.Formatter(f'%(asctime)s - {name} - %(levelname)s - %(message)s'))
         self.logger.addHandler(cmd_handler)
 
-        if cfg['file']:
-            file_handler = RotatingFileHandler(cfg['file'], maxBytes=cfg['file_size'], backupCount=cfg['file_backups'])
-            file_handler.setLevel(self.__get_level__(cfg['file_level']))
+        if self.cfg['file']:
+            file_handler = RotatingFileHandler(self.cfg['file'], maxBytes=self.cfg['file_size'], backupCount=self.cfg['file_backups'])
+            file_handler.setLevel(self.__get_level__(self.cfg['file_level']))
             file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(file_handler)
     
