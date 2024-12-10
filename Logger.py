@@ -1,35 +1,54 @@
 import logging
+from logging.handlers import RotatingFileHandler
 
 class Logger:
-    def __init__(self, obj, level=2):
+    __default__ = {
+        'level': 2,
+        'file': None, 
+        'file_level': 2,
+        'file_size': 10**6,
+        'file_backups': 3,
+    }
+
+    def __init__(self, name, **kwargs):
         """Initialaze new logger. The logger level is indicated by a number, where 1 - debug and 5 - error.
 
+        :param name: Logger name (usually module or class name).
+        :type name: str
         :param level: Level of logger
         :type level: int (1 - 5) / str
+        :param file: Optional path to the log file.
+        :type file: str / None
         """
-        self.logger = logging.getLogger(obj)
-        self.logger.setLevel(self.__get_level__(level))
+        cfg = {**Logger.__default__, **kwargs}
+
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(self.__get_level__(1))
         
-        self.handle = logging.StreamHandler()
-        self.handle.setFormatter(logging.Formatter(f'%(asctime)s - {obj} - %(levelname)s - %(message)s'))
-        self.logger.addHandler(self.handle)
+        cmd_handler = logging.StreamHandler()
+        cmd_handler.setLevel(self.__get_level__(cfg['level']))
+        cmd_handler.setFormatter(logging.Formatter(f'%(asctime)s - {name} - %(levelname)s - %(message)s'))
+        self.logger.addHandler(cmd_handler)
+
+        if cfg['file']:
+            file_handler = RotatingFileHandler(cfg['file'], maxBytes=cfg['file_size'], backupCount=cfg['file_backups'])
+            file_handler.setLevel(self.__get_level__(cfg['file_level']))
+            file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+            self.logger.addHandler(file_handler)
     
     def __get_level__(self, level):
         if isinstance(level, str): level = level.lower()
-        match level:
-            case 1:         return logging.DEBUG
-            case 'debug':   return logging.DEBUG
-            case 2:         return logging.INFO
-            case 'info':    return logging.INFO
-            case 3:         return logging.WARNING
-            case 'warning': return logging.WARNING
-            case 'warn':    return logging.WARNING
-            case 4:         return logging.ERROR
-            case 'error':   return logging.ERROR
-            case 5:         return logging.CRITICAL
-            case 'critical':return logging.CRITICAL
-            case _: raise ValueError(f"Logging level is incorrect - \"{level}\". Try 1 (debug) / 2 (info) / 3 (warning) / 4 (error) or 5 (critical)")
-
+        levels = {
+            1: logging.DEBUG,   'debug': logging.DEBUG,
+            2: logging.INFO,    'info': logging.INFO,
+            3: logging.WARNING, 'warning': logging.WARNING, 'warn': logging.WARNING,
+            4: logging.ERROR,   'error': logging.ERROR, 'err': logging.ERROR,
+            5: logging.CRITICAL,'critical': logging.CRITICAL, 'crit': logging.CRITICAL
+        }
+        if level not in levels:
+            raise ValueError(f"Invalid logging level: '{level}'. Use 1-5 or debug/info/warning/error/critical.")
+        return levels[level]
+    
     def log(self, level, message):
         """Send new message
         

@@ -5,50 +5,59 @@ try:
 except ImportError:
     from Logger import Logger
 class SQLite:
-    def __init__(self, path: str, index='id', log_lvl='warn'):
-        self.logger = Logger('SQLite', log_lvl)
+    def __init__(self, path: str, log_name="sqlite", ):
+        """Class for SQLite interaction
+        :param path: Path to the desired SQLite file
+        :type path: str
+        """
         self.connection = sqlite3.connect(path)
+        self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
-        self.Index = index
 
-    def Command(self, cmd:str):
-        self.cursor.execute(cmd)
+    def __enter__(self):
+        """Enter the runtime context for the object."""
+        return self
 
-    def Insert(self, table:str, values: dict):   
-        data = {f'"{k}"': f'"{v}"' if v is not None else "NULL" for k, v in values.items()}
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit the runtime context, ensuring the connection is closed."""
+        self.Close()
 
-        cmd = f"INSERT INTO {table} ({', '.join(data.keys())}) VALUES ({', '.join(map(str, data.values()))})"
-        self.cursor.execute(cmd)
-        self.logger.log('info', f"Data sucsessfuly inserted: {data}")
+    def Command(self, cmd: str, params=None):
+        """Execute a command with optional parameters."""
+        try:
+            self.cursor.execute(cmd, params or ())
+        except sqlite3.Error as e:
+            print(f"SQLite Error: {e}")  # Replace with proper logging
 
-    def Update(self, table:str, row_id: int, values: dict):
-        data = {f'"{k}"': f'"{v}"' if v is not None else "NULL" for k, v in values.items()}
-        if self.IsIdExist(table, row_id):
-            cmd = f"UPDATE {table} SET {', '.join([f'{key} = {val}' for key, val in data.items()])} WHERE {self.Index} = {row_id}"
-        else:
-            cmd = f"INSERT INTO {table} ({self.Index}, {', '.join(data.keys())}) VALUES ({row_id}, {', '.join(map(str, data.values()))})"
-        self.cursor.execute(cmd)
-        self.logger.log('info', f"Data sucsessfuly updated: {data}")
+    def Insert(self, table: str, values: dict):
+        """Insert a row into a table."""
+        columns = ', '.join(f'"{k}"' for k in values.keys())
+        placeholders = ', '.join(['?'] * len(values))
+        cmd = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+        self.Command(cmd, tuple(values.values()))
 
-    def IsIdExist(self, table:str, id_row:int) -> bool:
-        cmd = f"SELECT EXISTS(SELECT 1 FROM {table} WHERE {self.Index} = {id_row})"
-        self.cursor.execute(cmd)
-        return self.cursor.fetchone()[0] == 1
+    def FindRow(self, table: str, column: str, value):
+        """Find a row by column and value."""
+        cmd = f"SELECT * FROM {table} WHERE {column} = ?"
+        self.Command(cmd, (value,))
+        return self.cursor.fetchone()
 
-    def CallTable(self, table:str, values:list):
-         self.cursor.execute(f"SELECT {', '.join(values)} FROM {table}")
-         return self.cursor.fetchall()
-
-    def Delete(self, table:str, id_row:int):
-        cmd = f"DELETE FROM {table} WHERE {self.Index} = {id_row}"
-        self.cursor.execute(cmd)
-        self.logger.log('info', f"Data sucsessfuly deleted @{self.Index} = {id_row}")
+    def Delete(self, table: str, column: str, value):
+        """Delete rows matching a condition."""
+        cmd = f"DELETE FROM {table} WHERE {column} = ?"
+        self.Command(cmd, (value,))
 
     def Commit(self):
         """Commits the current transaction."""
-        self.connection.commit()
-        self.logger.log('info', "Database changes committed.")
+        try:
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f"Commit Error: {e}")  # Replace with proper logging
 
     def Close(self):
         """Closes the database connection."""
-        self.connection.close()
+        try:
+            self.connection.close()
+
+        except sqlite3.Error as e:
+            print(f"Close Error: {e}")  # Replace with proper logging
