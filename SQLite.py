@@ -28,7 +28,7 @@ class SQLite:
         try:
             self.cursor.execute(cmd, params or ())
         except sqlite3.Error as e:
-            self.logger.log(f"SQLite Error: {e}")
+            self.logger.log(4, f"SQLite Error: {e}")
 
     def Insert(self, table: str, values: dict):
         """Insert a row into a table."""
@@ -53,12 +53,11 @@ class SQLite:
         try:
             self.connection.commit()
         except sqlite3.Error as e:
-            self.logger.log(f"Commit Error: {e}")
+            self.logger.log(4, f"Commit Error: {e}")
 
     def Close(self):
         """Closes the database connection."""
         try:
             self.connection.close()
-
         except sqlite3.Error as e:
-            self.logger.log(f"Close Error: {e}")
+            self.logger.log(4, f"Close Error: {e}")
